@@ -22,6 +22,7 @@ redis = {version = ">=5.0", extras = ["hiredis"]}
 
 # Exchange API
 ccxt = ">=4.0"
+websockets = ">=12.0"
 
 # Technical Analysis
 pandas = ">=2.0"

@@ -1,6 +1,7 @@
 .PHONY: help setup test lint fmt check up down build logs restart ps \
        db-migrate db-upgrade db-downgrade db-shell db-backup \
-       redis-shell deploy status clean lock
+       redis-shell deploy status clean lock \
+       collector-backfill collector-stream collector-status
 
 SHELL := /bin/bash
 -include .env
@@ -94,6 +95,17 @@ db-restore: ## Restore from backup (usage: make db-restore file=backups/backup_x
 
 redis-shell: ## Open redis-cli
 	docker compose exec $(REDIS_CONTAINER) redis-cli
+
+# ─── Collector ────────────────────────────────────────────────
+
+collector-backfill: ## Backfill OHLCV data (usage: make collector-backfill days=90 top=50)
+	docker compose exec $(APP_CONTAINER) python -m src.collector backfill --days $(or $(days),90) --top $(or $(top),50)
+
+collector-stream: ## Stream real-time ticker data via WebSocket
+	docker compose exec $(APP_CONTAINER) python -m src.collector stream --top $(or $(top),50)
+
+collector-status: ## Show collector data status (candle counts)
+	docker compose exec $(APP_CONTAINER) python -m src.collector status
 
 # ─── Deploy ───────────────────────────────────────────────────
 

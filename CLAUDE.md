@@ -4,7 +4,7 @@
 AI-powered crypto trading recommendation system for ByBit exchange. Generates trading signals based on technical analysis, sentiment, on-chain data, and prediction markets. Delivers signals via Telegram and console dashboard. Does NOT execute trades automatically (recommendation only).
 
 ## Current status
-M0 (Foundation) and M1 (Market Data Collector) complete. Migrations applied, backfill tested. Next: M2 (Technical Analysis).
+M0 (Foundation), M1 (Market Data Collector), and M2 (Technical Analysis Engine) complete. Migrations applied, backfill and analyzer tested. Next: M3 (Coin Screener).
 
 ## Architecture
 
@@ -55,6 +55,10 @@ make db-downgrade      # Rollback last migration
 make db-shell          # Open psql
 make db-backup         # Backup database
 
+make analyzer-run symbol=BTCUSDT timeframe=1h  # Analyze single symbol
+make analyzer-scan top=50      # Scan top symbols for signals
+make analyzer-signals limit=20 # Show recent signals
+
 make deploy            # Pull + rebuild + migrate
 make clean             # Remove caches
 ```
@@ -92,8 +96,9 @@ All config via `.env` file (see `.env.example`). Loaded by `src/core/config.py` 
 ## Documentation
 - `docs/ANALYSIS.md` — market research, risk analysis, realistic return expectations
 - `docs/PLAN.md` — 8-week implementation roadmap (M0–M7)
-- `docs/COLLECTOR.md` — M1 collector module: architecture, CLI, data format
-- `docs/VPS_OPERATIONS.md` — deployment, monitoring, troubleshooting
+- `docs/modules/COLLECTOR.md` — M1 collector module: architecture, CLI, data format
+- `docs/modules/ANALYZER.md` — M2 analyzer module: indicators, signals, S/R levels
+- `docs/deployment/VPS_OPERATIONS.md` — deployment, monitoring, troubleshooting
 
 ## Security rules
 - Never commit `.env` or API keys

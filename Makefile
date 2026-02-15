@@ -1,7 +1,8 @@
 .PHONY: help setup test lint fmt check up down build logs restart ps \
        db-migrate db-upgrade db-downgrade db-shell db-backup \
        redis-shell deploy status clean lock \
-       collector-backfill collector-stream collector-status
+       collector-backfill collector-stream collector-status \
+       analyzer-run analyzer-scan analyzer-signals
 
 SHELL := /bin/bash
 -include .env
@@ -106,6 +107,17 @@ collector-stream: ## Stream real-time ticker data via WebSocket
 
 collector-status: ## Show collector data status (candle counts)
 	docker compose exec $(APP_CONTAINER) python -m src.collector status
+
+# ─── Analyzer ─────────────────────────────────────────────────
+
+analyzer-run: ## Analyze single symbol (usage: make analyzer-run symbol=BTCUSDT timeframe=1h)
+	docker compose exec $(APP_CONTAINER) python -m src.analyzer analyze --symbol $(or $(symbol),BTCUSDT) --timeframe $(or $(timeframe),1h)
+
+analyzer-scan: ## Scan top symbols for signals (usage: make analyzer-scan top=50)
+	docker compose exec $(APP_CONTAINER) python -m src.analyzer scan --top $(or $(top),50)
+
+analyzer-signals: ## Show recent signals
+	docker compose exec $(APP_CONTAINER) python -m src.analyzer signals --limit $(or $(limit),20)
 
 # ─── Deploy ───────────────────────────────────────────────────
 

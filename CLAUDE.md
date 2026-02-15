@@ -32,22 +32,31 @@ src/
 - **pydantic-settings** for configuration
 - **Docker Compose** for deployment
 
-## Key commands
+## Key commands (via Makefile)
 ```bash
-# Run tests
-source .venv/bin/activate && pytest tests/ -v
+make help              # Show all commands
+make setup             # Create venv, install deps
+make check             # Lint + tests
+make test              # Tests only
+make lint              # Lint only
+make fmt               # Auto-format code
+make lock              # Update requirements.lock
 
-# Lint
-ruff check src/ tests/
+make up                # Start Docker services
+make down              # Stop Docker services
+make build             # Rebuild app container
+make logs              # Follow app logs
+make ps                # Container status
+make status            # Full system diagnostics
 
-# Docker
-docker compose up -d --build
-docker compose logs -f app
-docker compose exec app alembic upgrade head
+make db-upgrade        # Apply migrations
+make db-migrate msg="description"  # Create migration
+make db-downgrade      # Rollback last migration
+make db-shell          # Open psql
+make db-backup         # Backup database
 
-# Alembic migrations
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+make deploy            # Pull + rebuild + migrate
+make clean             # Remove caches
 ```
 
 ## Important conventions

@@ -30,6 +30,7 @@ logs/
 
 # Data
 data/
+backups/
 *.csv
 *.parquet
 

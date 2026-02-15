@@ -1,13 +1,15 @@
 import enum
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     DateTime,
     Enum,
     Float,
-    Index,
+    ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -45,9 +47,9 @@ class Symbol(Base):
     min_order_size: Mapped[float | None] = mapped_column(Float, nullable=True)
     price_precision: Mapped[int | None] = mapped_column(Integer, nullable=True)
     qty_precision: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 
@@ -57,7 +59,7 @@ class OHLCV(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     timeframe: Mapped[str] = mapped_column(String(5))  # "5m", "15m", "1h", "4h", "1d"
-    timestamp: Mapped[datetime] = mapped_column(DateTime, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     open: Mapped[float] = mapped_column(Float)
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)
@@ -66,7 +68,6 @@ class OHLCV(Base):
 
     __table_args__ = (
         UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_ohlcv_symbol_tf_ts"),
-        Index("ix_ohlcv_symbol_tf_ts", "symbol", "timeframe", "timestamp"),
     )
 
 
@@ -78,19 +79,19 @@ class Signal(Base):
     direction: Mapped[SignalDirection] = mapped_column(Enum(SignalDirection))
     timeframe: Mapped[str] = mapped_column(String(5))
     confidence: Mapped[float] = mapped_column(Float)  # 0.0 - 1.0
-    entry_price: Mapped[float] = mapped_column(Float)
-    stop_loss: Mapped[float] = mapped_column(Float)
-    take_profit_1: Mapped[float] = mapped_column(Float)
-    take_profit_2: Mapped[float | None] = mapped_column(Float, nullable=True)
-    take_profit_3: Mapped[float | None] = mapped_column(Float, nullable=True)
+    entry_price: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    stop_loss: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    take_profit_1: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    take_profit_2: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
+    take_profit_3: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
     risk_reward: Mapped[float] = mapped_column(Float)
     position_size_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     source: Mapped[str] = mapped_column(String(50))  # "technical", "scoring", etc.
     status: Mapped[SignalStatus] = mapped_column(Enum(SignalStatus), default=SignalStatus.NEW)
     indicators: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SentimentData(Base):
@@ -103,7 +104,7 @@ class SentimentData(Base):
     volume: Mapped[int | None] = mapped_column(Integer, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class WhaleTransaction(Base):
@@ -112,11 +113,11 @@ class WhaleTransaction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tx_hash: Mapped[str] = mapped_column(String(100), unique=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
-    amount_usd: Mapped[float] = mapped_column(Float)
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(20, 2))
     from_type: Mapped[str] = mapped_column(String(20))  # "exchange", "whale", "unknown"
     to_type: Mapped[str] = mapped_column(String(20))
     direction: Mapped[str] = mapped_column(String(20))  # "inflow", "outflow", "transfer"
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PaperTrade(Base):
@@ -125,14 +126,16 @@ class PaperTrade(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[SignalDirection] = mapped_column(Enum(SignalDirection))
-    entry_price: Mapped[float] = mapped_column(Float)
-    exit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
-    size_usdt: Mapped[float] = mapped_column(Float)
-    stop_loss: Mapped[float | None] = mapped_column(Float, nullable=True)
-    take_profit: Mapped[float | None] = mapped_column(Float, nullable=True)
-    pnl: Mapped[float | None] = mapped_column(Float, nullable=True)
+    entry_price: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    exit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
+    size_usdt: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    stop_loss: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
+    take_profit: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
+    pnl: Mapped[Decimal | None] = mapped_column(Numeric(20, 8), nullable=True)
     pnl_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
-    signal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    opened_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    signal_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("signals.id", ondelete="SET NULL"), nullable=True
+    )
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

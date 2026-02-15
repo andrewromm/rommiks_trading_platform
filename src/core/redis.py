@@ -1,8 +1,11 @@
+import asyncio
+
 import redis.asyncio as redis
 
 from src.core.config import settings
 
 redis_client: redis.Redis | None = None
+_redis_lock = asyncio.Lock()
 
 
 async def init_redis() -> redis.Redis:
@@ -13,9 +16,10 @@ async def init_redis() -> redis.Redis:
 
 
 async def get_redis() -> redis.Redis:
-    if redis_client is None:
-        return await init_redis()
-    return redis_client
+    async with _redis_lock:
+        if redis_client is None:
+            return await init_redis()
+        return redis_client
 
 
 async def close_redis() -> None:

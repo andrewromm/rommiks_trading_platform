@@ -1,23 +1,25 @@
 import asyncio
+import functools
 import signal
+
+import structlog
 
 from src.core.config import settings
 from src.core.database import close_db, init_db
 from src.core.logger import get_logger, setup_logging
 from src.core.redis import close_redis, init_redis
 
-log = get_logger("main")
-
 shutdown_event = asyncio.Event()
 
 
-def handle_shutdown(sig: signal.Signals) -> None:
+def handle_shutdown(log: structlog.stdlib.BoundLogger, sig: signal.Signals) -> None:
     log.info("shutdown_signal_received", signal=sig.name)
     shutdown_event.set()
 
 
 async def main() -> None:
     setup_logging(settings.log_level)
+    log = get_logger("main")
     log.info(
         "starting_trading_system",
         environment=settings.environment,
@@ -25,11 +27,20 @@ async def main() -> None:
     )
 
     # Init infrastructure
-    await init_db()
-    log.info("database_connected")
+    try:
+        await init_db()
+        log.info("database_connected")
+    except Exception as e:
+        log.error("database_connection_failed", error=str(e))
+        return
 
-    await init_redis()
-    log.info("redis_connected")
+    try:
+        await init_redis()
+        log.info("redis_connected")
+    except Exception as e:
+        log.error("redis_connection_failed", error=str(e))
+        await close_db()
+        return
 
     log.info("system_ready")
 
@@ -44,10 +55,13 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    setup_logging(settings.log_level)
+    _log = get_logger("main")
+
     loop = asyncio.new_event_loop()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, handle_shutdown, sig)
+        loop.add_signal_handler(sig, functools.partial(handle_shutdown, _log, sig))
 
     try:
         loop.run_until_complete(main())

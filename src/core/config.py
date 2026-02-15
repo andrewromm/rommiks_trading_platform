@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,16 +40,20 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     @property
+    def _db_credentials(self) -> str:
+        return f"{quote_plus(self.postgres_user)}:{quote_plus(self.postgres_password)}"
+
+    @property
     def database_url(self) -> str:
         return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql+asyncpg://{self._db_credentials}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
     @property
     def database_url_sync(self) -> str:
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql://{self._db_credentials}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 

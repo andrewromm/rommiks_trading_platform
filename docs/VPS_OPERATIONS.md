@@ -102,16 +102,17 @@ chmod 600 .env
 cd /srv/rommiks/trading
 
 # Собрать образы и поднять всё
-docker compose up -d --build
+make up
+# или с пересборкой: make build
 
 # Проверить что всё поднялось
-docker compose ps
+make ps
 
 # Применить миграции БД
-docker compose exec app alembic upgrade head
+make db-upgrade
 
 # Посмотреть логи
-docker compose logs -f app
+make logs
 ```
 
 ### Ожидаемый вывод при старте
@@ -127,25 +128,102 @@ app     | system_ready
 
 ---
 
-## 3. Остановка и перезапуск
+## 3. Makefile — справочник команд
+
+Все основные операции доступны через `make`. Выполнять из директории проекта (`/srv/rommiks/trading`).
+
+```bash
+make help    # Показать список всех доступных команд
+```
+
+### Разработка
+
+| Команда | Описание |
+|---|---|
+| `make setup` | Установить все зависимости через Poetry |
+| `make test` | Запустить тесты |
+| `make lint` | Проверить код линтером (ruff) |
+| `make fmt` | Автоформатирование кода |
+| `make check` | Lint + тесты вместе |
+| `make lock` | Обновить poetry.lock |
+
+### Docker
+
+| Команда | Описание |
+|---|---|
+| `make up` | Запустить все контейнеры |
+| `make down` | Остановить все контейнеры |
+| `make build` | Пересобрать и перезапустить app |
+| `make restart` | Перезапустить app (без пересборки) |
+| `make ps` | Статус контейнеров |
+| `make logs` | Логи app в реальном времени |
+| `make logs-all` | Логи всех сервисов |
+
+### База данных
+
+| Команда | Описание |
+|---|---|
+| `make db-upgrade` | Применить все миграции |
+| `make db-downgrade` | Откатить последнюю миграцию |
+| `make db-migrate msg="описание"` | Создать новую миграцию |
+| `make db-history` | История миграций |
+| `make db-current` | Текущая ревизия миграции |
+| `make db-shell` | Открыть psql-консоль |
+| `make db-backup` | Создать бэкап в `/srv/rommiks/backups/` |
+| `make db-restore file=путь` | Восстановить из бэкапа |
+
+### Redis
+
+| Команда | Описание |
+|---|---|
+| `make redis-shell` | Открыть redis-cli |
+
+### Деплой и мониторинг
+
+| Команда | Описание |
+|---|---|
+| `make deploy` | Pull + пересборка + миграции |
+| `make status` | Полная диагностика системы |
+| `make clean` | Очистить кэши Python |
+| `make clean-docker` | Очистить неиспользуемые Docker-образы |
+
+### Типовые сценарии
+
+```bash
+# Первый запуск на VPS
+make up && make db-upgrade
+
+# Обновление после git pull
+make deploy
+
+# Быстрая проверка что всё работает
+make status
+
+# Ежедневный бэкап (также настроен в cron)
+make db-backup
+```
+
+---
+
+## 4. Остановка и перезапуск
 
 ### Остановить всё
 
 ```bash
-docker compose down
+make down
 ```
 
 ### Остановить с сохранением данных
 
 ```bash
-docker compose down
+make down
 # Данные PostgreSQL и Redis сохраняются в /srv/rommiks/data/
 ```
 
 ### Остановить и УДАЛИТЬ данные (осторожно!)
 
 ```bash
-docker compose down
+make down
 sudo rm -rf /srv/rommiks/data/postgres/* /srv/rommiks/data/redis/*
 # ВСЕ данные БД будут потеряны!
 ```
@@ -153,52 +231,56 @@ sudo rm -rf /srv/rommiks/data/postgres/* /srv/rommiks/data/redis/*
 ### Перезапуск приложения (без перезапуска БД)
 
 ```bash
-docker compose restart app
+make restart
 ```
 
 ### Перезапуск с пересборкой (после обновления кода)
 
 ```bash
-docker compose up -d --build app
+make build
 ```
 
 ### Полный перезапуск всего стека
 
 ```bash
-docker compose down && docker compose up -d
+make down && make up
 ```
 
 ---
 
-## 4. Обновление кода
+## 5. Обновление кода
 
 ```bash
 cd /srv/rommiks/trading
 
-# Забрать обновления
+# Всё в одну команду: pull + rebuild + migrate
+make deploy
+
+# Или вручную по шагам:
 git pull origin main
-
-# Пересобрать и перезапустить приложение
-docker compose up -d --build app
-
-# Применить новые миграции (если есть)
-docker compose exec app alembic upgrade head
+make build
+make db-upgrade
 ```
 
 ---
 
-## 5. Логи
+## 6. Логи
 
 ### Все логи в реальном времени
 
 ```bash
-docker compose logs -f
+make logs-all
 ```
 
-### Логи конкретного сервиса
+### Логи приложения
 
 ```bash
-docker compose logs -f app      # приложение
+make logs
+```
+
+### Логи конкретного сервиса (db, redis)
+
+```bash
 docker compose logs -f db       # PostgreSQL
 docker compose logs -f redis    # Redis
 ```
@@ -217,12 +299,20 @@ docker compose logs -f -t app
 
 ---
 
-## 6. Мониторинг
+## 7. Мониторинг
+
+### Полная диагностика
+
+```bash
+make status
+```
+
+Выводит: контейнеры, ресурсы, диск, размер БД.
 
 ### Состояние контейнеров
 
 ```bash
-docker compose ps
+make ps
 ```
 
 Ожидаемый вывод — все сервисы `Up (healthy)`:
@@ -265,12 +355,12 @@ du -sh /srv/rommiks/data/postgres /srv/rommiks/data/redis /srv/rommiks/backups
 
 ---
 
-## 7. Работа с базой данных
+## 8. Работа с базой данных
 
 ### Подключение к PostgreSQL
 
 ```bash
-docker compose exec db psql -U trading
+make db-shell
 ```
 
 ### Полезные SQL-запросы
@@ -317,21 +407,21 @@ make db-restore file=/srv/rommiks/backups/backup_20260215.sql.gz
 
 ```bash
 # Применить все миграции
-docker compose exec app alembic upgrade head
+make db-upgrade
 
 # Откатить последнюю миграцию
-docker compose exec app alembic downgrade -1
+make db-downgrade
 
 # Посмотреть текущую ревизию
-docker compose exec app alembic current
+make db-current
 
 # Посмотреть историю миграций
-docker compose exec app alembic history
+make db-history
 ```
 
 ---
 
-## 8. Автозапуск при перезагрузке VPS
+## 9. Автозапуск при перезагрузке VPS
 
 Docker с `restart: unless-stopped` перезапустит контейнеры автоматически при перезагрузке сервера. Убедитесь, что Docker включён в автозапуск:
 
@@ -344,12 +434,12 @@ sudo systemctl enable docker
 ```bash
 sudo reboot
 # ... подождать ~1 минуту, переподключиться
-docker compose ps
+cd /srv/rommiks/trading && make status
 ```
 
 ---
 
-## 9. Обновление Docker-образов
+## 10. Обновление Docker-образов
 
 ### Обновить базовые образы (PostgreSQL, Redis)
 
@@ -370,7 +460,7 @@ docker system prune -f
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 ### Контейнер не запускается
 
@@ -443,7 +533,7 @@ docker compose kill app && docker compose up -d app
 
 ---
 
-## 11. Безопасность: чеклист
+## 12. Безопасность: чеклист
 
 - [ ] `.env` имеет права `600` (`chmod 600 .env`)
 - [ ] `.env` **НЕ** в git (проверить: `git status`)
@@ -462,7 +552,7 @@ sudo ss -tlnp | grep -E '5432|6379'
 
 ---
 
-## 12. Регулярное обслуживание
+## 13. Регулярное обслуживание
 
 ### Еженедельно
 - Проверить логи на ошибки: `docker compose logs --since 7d app | grep -i error`
@@ -478,8 +568,5 @@ sudo ss -tlnp | grep -E '5432|6379'
 ### Команда быстрой диагностики
 
 ```bash
-echo "=== Containers ===" && docker compose ps && \
-echo "=== Resources ===" && docker stats --no-stream && \
-echo "=== Disk ===" && df -h / && \
-echo "=== Memory ===" && free -h
+make status
 ```

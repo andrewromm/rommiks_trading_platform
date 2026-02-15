@@ -17,6 +17,7 @@ uvloop = {version = ">=0.19", markers = "sys_platform != 'win32'"}
 # Database
 sqlalchemy = {version = ">=2.0", extras = ["asyncio"]}
 asyncpg = ">=0.29"
+psycopg2-binary = ">=2.9"
 alembic = ">=1.13"
 redis = {version = ">=5.0", extras = ["hiredis"]}
 

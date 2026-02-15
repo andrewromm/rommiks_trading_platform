@@ -128,7 +128,7 @@ async def _status() -> None:
             select(
                 OHLCV.symbol,
                 OHLCV.timeframe,
-                func.count(OHLCV.id).label("count"),
+                func.count().label("count"),
                 func.min(OHLCV.timestamp).label("first"),
                 func.max(OHLCV.timestamp).label("last"),
             )

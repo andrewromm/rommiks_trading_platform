@@ -1,7 +1,7 @@
 """OHLCV data fetcher — historical backfill and incremental updates."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from src.collector.exchange import ExchangeClient
 from src.collector.storage import get_latest_timestamp, save_candles
@@ -64,7 +64,7 @@ async def backfill_symbol(
             since=latest.isoformat(),
         )
     else:
-        since_ms = int((datetime.now(datetime.UTC) - timedelta(days=days)).timestamp() * 1000)
+        since_ms = int((datetime.now(UTC) - timedelta(days=days)).timestamp() * 1000)
         log.info(
             "full_backfill",
             symbol=symbol,
@@ -72,7 +72,7 @@ async def backfill_symbol(
             days=days,
         )
 
-    now_ms = int(datetime.now(datetime.UTC).timestamp() * 1000)
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
     total_saved = 0
 
     while since_ms < now_ms:

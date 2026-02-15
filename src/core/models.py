@@ -3,7 +3,6 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger,
     DateTime,
     Enum,
     Float,
@@ -12,7 +11,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -56,19 +54,16 @@ class Symbol(Base):
 class OHLCV(Base):
     __tablename__ = "ohlcv"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    symbol: Mapped[str] = mapped_column(String(20), index=True)
-    timeframe: Mapped[str] = mapped_column(String(5))  # "5m", "15m", "1h", "4h", "1d"
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    symbol: Mapped[str] = mapped_column(String(20), primary_key=True, index=True)
+    timeframe: Mapped[str] = mapped_column(String(5), primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), primary_key=True, index=True
+    )
     open: Mapped[float] = mapped_column(Float)
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)
     close: Mapped[float] = mapped_column(Float)
     volume: Mapped[float] = mapped_column(Float)
-
-    __table_args__ = (
-        UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_ohlcv_symbol_tf_ts"),
-    )
 
 
 class Signal(Base):

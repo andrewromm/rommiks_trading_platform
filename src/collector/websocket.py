@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 import redis.asyncio as redis
 
@@ -142,7 +142,7 @@ class WebSocketManager:
             "low_24h": data.get("lowPrice24h", ""),
             "volume_24h": data.get("volume24h", ""),
             "turnover_24h": data.get("turnover24h", ""),
-            "updated_at": datetime.now(datetime.UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
         # Store in Redis with 60s TTL (atomic via pipeline)

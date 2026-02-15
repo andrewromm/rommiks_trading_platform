@@ -1,6 +1,6 @@
 """OHLCV storage layer — batch upsert and queries."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -29,7 +29,7 @@ async def save_candles(
         {
             "symbol": symbol,
             "timeframe": timeframe,
-            "timestamp": datetime.fromtimestamp(c[0] / 1000, tz=datetime.UTC),
+            "timestamp": datetime.fromtimestamp(c[0] / 1000, tz=UTC),
             "open": c[1],
             "high": c[2],
             "low": c[3],
@@ -45,7 +45,7 @@ async def save_candles(
 
     stmt = pg_insert(OHLCV).values(values)
     stmt = stmt.on_conflict_do_update(
-        constraint="uq_ohlcv_symbol_tf_ts",
+        index_elements=["symbol", "timeframe", "timestamp"],
         set_={
             "open": stmt.excluded.open,
             "high": stmt.excluded.high,
@@ -82,7 +82,7 @@ async def get_candle_count(
     """Count candles, optionally filtered by symbol and/or timeframe."""
     from sqlalchemy import func
 
-    query = select(func.count(OHLCV.id))
+    query = select(func.count()).select_from(OHLCV)
     if symbol:
         query = query.where(OHLCV.symbol == symbol)
     if timeframe:

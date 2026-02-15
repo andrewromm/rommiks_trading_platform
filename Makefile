@@ -116,7 +116,7 @@ status: ## Full system diagnostics
 	@df -h / 2>/dev/null | head -2
 	@echo ""
 	@echo "=== DB Size ==="
-	@docker compose exec $(DB_CONTAINER) psql -U $(DB_USER) -t -c \
+	@docker compose exec $(DB_CONTAINER) psql -U $(DB_USER) $(DB_NAME) -t -c \
 		"SELECT pg_size_pretty(pg_database_size('$(DB_NAME)'));" 2>/dev/null || echo "DB not running"
 
 # ─── Cleanup ──────────────────────────────────────────────────

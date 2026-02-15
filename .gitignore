@@ -42,5 +42,8 @@ htmlcov/
 # Claude
 .claude/
 
+# Serena
+.serena/
+
 # Ruff
 .ruff_cache/

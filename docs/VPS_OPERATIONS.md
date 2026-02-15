@@ -53,8 +53,9 @@ sudo ufw enable
 ### Автоматическая настройка (рекомендуется)
 
 ```bash
-# Скачать и запустить bootstrap-скрипт
-sudo bash scripts/bootstrap.sh <REPO_URL>
+# Одна команда — скачает и запустит bootstrap-скрипт
+curl -fsSL https://raw.githubusercontent.com/andrewromm/rommiks_trading_platform/main/scripts/bootstrap.sh \
+  | sudo bash -s -- https://github.com/andrewromm/rommiks_trading_platform.git
 ```
 
 Скрипт автоматически:

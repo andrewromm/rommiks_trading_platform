@@ -3,9 +3,6 @@
        redis-shell deploy status clean lock
 
 SHELL := /bin/bash
-VENV := .venv
-PYTHON := $(VENV)/bin/python
-PIP := $(VENV)/bin/pip
 APP_CONTAINER := app
 DB_CONTAINER := db
 REDIS_CONTAINER := redis
@@ -17,28 +14,25 @@ help: ## Show this help
 
 # ─── Development ──────────────────────────────────────────────
 
-setup: ## Create venv and install all dependencies
-	python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev]"
-	@echo "Done. Activate with: source $(VENV)/bin/activate"
+setup: ## Install all dependencies via Poetry
+	poetry install --with dev
+	@echo "Done. Run: poetry shell"
 
 test: ## Run tests
-	$(PYTHON) -m pytest tests/ -v
+	poetry run pytest tests/ -v
 
 lint: ## Run linter
-	$(VENV)/bin/ruff check src/ tests/
+	poetry run ruff check src/ tests/
 
 fmt: ## Format code
-	$(VENV)/bin/ruff check src/ tests/ --fix
-	$(VENV)/bin/ruff format src/ tests/
+	poetry run ruff check src/ tests/ --fix
+	poetry run ruff format src/ tests/
 
 check: lint test ## Run lint + tests
 
-lock: ## Update requirements.lock from current venv
-	$(PIP) freeze | grep -v "^-e " | grep -v "^ruff==" | grep -v "^pytest" | \
-		grep -v "^mypy==" | grep -v "^coverage==" > requirements.lock
-	@echo "requirements.lock updated"
+lock: ## Update poetry.lock
+	poetry lock
+	@echo "poetry.lock updated"
 
 # ─── Docker ───────────────────────────────────────────────────
 

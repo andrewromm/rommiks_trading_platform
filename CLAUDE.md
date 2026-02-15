@@ -35,12 +35,12 @@ src/
 ## Key commands (via Makefile)
 ```bash
 make help              # Show all commands
-make setup             # Create venv, install deps
+make setup             # Install deps via Poetry
 make check             # Lint + tests
 make test              # Tests only
 make lint              # Lint only
 make fmt               # Auto-format code
-make lock              # Update requirements.lock
+make lock              # Update poetry.lock
 
 make up                # Start Docker services
 make down              # Stop Docker services

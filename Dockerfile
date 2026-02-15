@@ -7,10 +7,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.lock .
-RUN pip install --no-cache-dir -r requirements.lock
+RUN pip install --no-cache-dir poetry \
+    && poetry config virtualenvs.create false
+
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --only main --no-root --no-interaction
 
 COPY . .
+RUN poetry install --only-root --no-interaction
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1

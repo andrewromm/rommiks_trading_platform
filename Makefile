@@ -3,10 +3,14 @@
        redis-shell deploy status clean lock
 
 SHELL := /bin/bash
+-include .env
+
 APP_CONTAINER := app
 DB_CONTAINER := db
 REDIS_CONTAINER := redis
 BACKUP_DIR := /srv/rommiks/backups
+DB_USER := $(or $(POSTGRES_USER),trading)
+DB_NAME := $(or $(POSTGRES_DB),trading)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -75,16 +79,16 @@ db-current: ## Show current migration revision
 	docker compose exec $(APP_CONTAINER) alembic current
 
 db-shell: ## Open psql shell
-	docker compose exec $(DB_CONTAINER) psql -U trading
+	docker compose exec $(DB_CONTAINER) psql -U $(DB_USER) $(DB_NAME)
 
 db-backup: ## Create database backup
 	@mkdir -p $(BACKUP_DIR)
-	docker compose exec $(DB_CONTAINER) pg_dump -U trading trading | \
+	docker compose exec $(DB_CONTAINER) pg_dump -U $(DB_USER) $(DB_NAME) | \
 		gzip > $(BACKUP_DIR)/backup_$$(date +%Y%m%d_%H%M%S).sql.gz
 	@echo "Backup saved to $(BACKUP_DIR)/"
 
 db-restore: ## Restore from backup (usage: make db-restore file=backups/backup_xxx.sql.gz)
-	gunzip -c $(file) | docker compose exec -T $(DB_CONTAINER) psql -U trading trading
+	gunzip -c $(file) | docker compose exec -T $(DB_CONTAINER) psql -U $(DB_USER) $(DB_NAME)
 
 # ─── Redis ────────────────────────────────────────────────────
 
@@ -112,8 +116,8 @@ status: ## Full system diagnostics
 	@df -h / 2>/dev/null | head -2
 	@echo ""
 	@echo "=== DB Size ==="
-	@docker compose exec $(DB_CONTAINER) psql -U trading -t -c \
-		"SELECT pg_size_pretty(pg_database_size('trading'));" 2>/dev/null || echo "DB not running"
+	@docker compose exec $(DB_CONTAINER) psql -U $(DB_USER) -t -c \
+		"SELECT pg_size_pretty(pg_database_size('$(DB_NAME)'));" 2>/dev/null || echo "DB not running"
 
 # ─── Cleanup ──────────────────────────────────────────────────
 

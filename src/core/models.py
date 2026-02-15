@@ -88,6 +88,23 @@ class Signal(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    def to_dict(self) -> dict:
+        """Convert Signal to dict for formatter/notifier."""
+        return {
+            "symbol": self.symbol,
+            "direction": self.direction.value,
+            "timeframe": self.timeframe,
+            "confidence": self.confidence,
+            "entry_price": self.entry_price,
+            "stop_loss": self.stop_loss,
+            "take_profit_1": self.take_profit_1,
+            "take_profit_2": self.take_profit_2,
+            "take_profit_3": self.take_profit_3,
+            "risk_reward": self.risk_reward,
+            "position_size_pct": self.position_size_pct,
+            "indicators": self.indicators or {},
+        }
+
 
 class SentimentData(Base):
     __tablename__ = "sentiment_data"

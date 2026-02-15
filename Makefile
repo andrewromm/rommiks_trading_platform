@@ -2,7 +2,8 @@
        db-migrate db-upgrade db-downgrade db-shell db-backup \
        redis-shell deploy status clean lock \
        collector-backfill collector-stream collector-status \
-       analyzer-run analyzer-scan analyzer-signals
+       analyzer-run analyzer-scan analyzer-signals \
+       bot bot-notify screener-scan screener-listings scheduler
 
 SHELL := /bin/bash
 -include .env
@@ -118,6 +119,25 @@ analyzer-scan: ## Scan top symbols for signals (usage: make analyzer-scan top=50
 
 analyzer-signals: ## Show recent signals
 	docker compose exec $(APP_CONTAINER) python -m src.analyzer signals --limit $(or $(limit),20)
+
+# ─── Delivery ────────────────────────────────────────────────
+
+bot: ## Start Telegram bot
+	docker compose exec $(APP_CONTAINER) python -m src.delivery bot
+
+bot-notify: ## Send test notification to Telegram
+	docker compose exec $(APP_CONTAINER) python -m src.delivery notify
+
+# ─── Screener ────────────────────────────────────────────────
+
+screener-scan: ## Run coin screener (usage: make screener-scan top=10)
+	docker compose exec $(APP_CONTAINER) python -m src.screener scan --top $(or $(top),10)
+
+screener-listings: ## Check for new ByBit listings
+	docker compose exec $(APP_CONTAINER) python -m src.screener listings
+
+scheduler: ## Start scheduler (analysis + screener + listings)
+	docker compose exec $(APP_CONTAINER) python -m src.screener scheduler --top $(or $(top),50)
 
 # ─── Deploy ───────────────────────────────────────────────────
 

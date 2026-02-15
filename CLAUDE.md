@@ -4,7 +4,7 @@
 AI-powered crypto trading recommendation system for ByBit exchange. Generates trading signals based on technical analysis, sentiment, on-chain data, and prediction markets. Delivers signals via Telegram and console dashboard. Does NOT execute trades automatically (recommendation only).
 
 ## Current status
-M0 (Foundation), M1 (Market Data Collector), and M2 (Technical Analysis Engine) complete. Migrations applied, backfill and analyzer tested. Next: M3 (Coin Screener).
+M0 (Foundation), M1 (Market Data Collector), M2 (Technical Analysis Engine), and M3 (Delivery + Screener) complete. Next: M4 (Sentiment & News).
 
 ## Architecture
 
@@ -59,6 +59,11 @@ make analyzer-run symbol=BTCUSDT timeframe=1h  # Analyze single symbol
 make analyzer-scan top=50      # Scan top symbols for signals
 make analyzer-signals limit=20 # Show recent signals
 
+make bot                       # Start Telegram bot
+make screener-scan top=10      # Run coin screener
+make screener-listings         # Check new ByBit listings
+make scheduler top=50          # Start scheduler (analysis + screener)
+
 make deploy            # Pull + rebuild + migrate
 make clean             # Remove caches
 ```
@@ -98,6 +103,7 @@ All config via `.env` file (see `.env.example`). Loaded by `src/core/config.py` 
 - `docs/PLAN.md` — 8-week implementation roadmap (M0–M7)
 - `docs/modules/COLLECTOR.md` — M1 collector module: architecture, CLI, data format
 - `docs/modules/ANALYZER.md` — M2 analyzer module: indicators, signals, S/R levels
+- `docs/modules/DELIVERY.md` — M3 delivery module: Telegram bot, screener, scheduler
 - `docs/deployment/VPS_OPERATIONS.md` — deployment, monitoring, troubleshooting
 
 ## Security rules

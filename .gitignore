@@ -1,0 +1,42 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Data
+data/
+*.csv
+*.parquet
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Claude
+.claude/

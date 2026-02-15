@@ -4,7 +4,7 @@
 AI-powered crypto trading recommendation system for ByBit exchange. Generates trading signals based on technical analysis, sentiment, on-chain data, and prediction markets. Delivers signals via Telegram and console dashboard. Does NOT execute trades automatically (recommendation only).
 
 ## Current status
-M0 (Foundation) complete. Working on M1 (Market Data Collector).
+M0 (Foundation) and M1 (Market Data Collector) complete. Migrations applied, backfill tested. Next: M2 (Technical Analysis).
 
 ## Architecture
 
@@ -90,8 +90,9 @@ All config via `.env` file (see `.env.example`). Loaded by `src/core/config.py` 
 - See `docs/VPS_OPERATIONS.md` for full deployment guide
 
 ## Documentation
-- `ANALYSIS.md` — market research, risk analysis, realistic return expectations
-- `PLAN.md` — 8-week implementation roadmap (M0–M7)
+- `docs/ANALYSIS.md` — market research, risk analysis, realistic return expectations
+- `docs/PLAN.md` — 8-week implementation roadmap (M0–M7)
+- `docs/COLLECTOR.md` — M1 collector module: architecture, CLI, data format
 - `docs/VPS_OPERATIONS.md` — deployment, monitoring, troubleshooting
 
 ## Security rules

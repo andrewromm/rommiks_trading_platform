@@ -82,6 +82,9 @@ All config via `.env` file (see `.env.example`). Loaded by `src/core/config.py` 
 
 ## Deployment
 - VPS: 4 CPU, 8GB RAM (Hetzner or similar)
+- Base directory: `/srv/rommiks/` (trading/, data/, backups/, logs/)
+- Data stored via bind mounts, NOT Docker named volumes
+- Bootstrap: `sudo bash scripts/bootstrap.sh <REPO_URL>`
 - Docker Compose with memory limits: db=3G, redis=512M, app=2G
 - Ports bound to 127.0.0.1 only (not exposed externally)
 - See `docs/VPS_OPERATIONS.md` for full deployment guide

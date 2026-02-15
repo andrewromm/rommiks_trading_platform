@@ -10,7 +10,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /srv/rommiks/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trading}"]
       interval: 10s
@@ -24,7 +24,7 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
-      - redisdata:/data
+      - /srv/rommiks/data/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -47,6 +47,3 @@ services:
     volumes:
       - ./src:/app/src
 
-volumes:
-  pgdata:
-  redisdata:

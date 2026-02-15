@@ -9,7 +9,7 @@ PIP := $(VENV)/bin/pip
 APP_CONTAINER := app
 DB_CONTAINER := db
 REDIS_CONTAINER := redis
-BACKUP_DIR := backups
+BACKUP_DIR := /srv/rommiks/backups
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \

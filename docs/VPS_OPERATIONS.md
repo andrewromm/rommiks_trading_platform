@@ -1,5 +1,19 @@
 # Операции на VPS: запуск, управление, обслуживание
 
+## Структура каталогов на VPS
+
+```
+/srv/rommiks/
+├── trading/          # git-репозиторий проекта
+├── data/
+│   ├── postgres/     # данные PostgreSQL (bind mount)
+│   └── redis/        # данные Redis (bind mount)
+├── backups/          # бэкапы БД (.sql.gz)
+└── logs/             # логи приложения
+```
+
+---
+
 ## 1. Первоначальная настройка VPS
 
 ### Требования
@@ -36,13 +50,27 @@ sudo ufw allow ssh
 sudo ufw enable
 ```
 
-### Клонирование проекта
+### Автоматическая настройка (рекомендуется)
 
 ```bash
-mkdir -p ~/projects
-cd ~/projects
-git clone <REPO_URL> trading
-cd trading
+# Скачать и запустить bootstrap-скрипт
+sudo bash scripts/bootstrap.sh <REPO_URL>
+```
+
+Скрипт автоматически:
+- Установит Docker и зависимости
+- Создаст структуру `/srv/rommiks/`
+- Клонирует репозиторий
+- Сгенерирует `.env` с паролем PostgreSQL
+- Настроит firewall и swap
+- Добавит cron для ежедневных бэкапов
+
+### Ручная настройка
+
+```bash
+# Клонирование
+git clone <REPO_URL> /srv/rommiks/trading
+cd /srv/rommiks/trading
 ```
 
 ### Настройка окружения
@@ -70,7 +98,7 @@ chmod 600 .env
 ### Первый запуск
 
 ```bash
-cd ~/projects/trading
+cd /srv/rommiks/trading
 
 # Собрать образы и поднять всё
 docker compose up -d --build
@@ -106,18 +134,19 @@ app     | system_ready
 docker compose down
 ```
 
-### Остановить с сохранением данных (volumes)
+### Остановить с сохранением данных
 
 ```bash
 docker compose down
-# Данные PostgreSQL и Redis сохраняются в Docker volumes
+# Данные PostgreSQL и Redis сохраняются в /srv/rommiks/data/
 ```
 
 ### Остановить и УДАЛИТЬ данные (осторожно!)
 
 ```bash
-docker compose down -v
-# -v удаляет volumes — ВСЕ данные БД будут потеряны
+docker compose down
+sudo rm -rf /srv/rommiks/data/postgres/* /srv/rommiks/data/redis/*
+# ВСЕ данные БД будут потеряны!
 ```
 
 ### Перезапуск приложения (без перезапуска БД)
@@ -143,7 +172,7 @@ docker compose down && docker compose up -d
 ## 4. Обновление кода
 
 ```bash
-cd ~/projects/trading
+cd /srv/rommiks/trading
 
 # Забрать обновления
 git pull origin main
@@ -227,10 +256,10 @@ docker compose exec db psql -U trading -c "
 "
 ```
 
-### Размер Docker volumes
+### Размер данных
 
 ```bash
-docker system df -v | grep trading
+du -sh /srv/rommiks/data/postgres /srv/rommiks/data/redis /srv/rommiks/backups
 ```
 
 ---
@@ -272,11 +301,15 @@ WHERE closed_at IS NOT NULL;
 ### Бэкап БД
 
 ```bash
-# Создать бэкап
-docker compose exec db pg_dump -U trading trading | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+# Создать бэкап (через Makefile)
+make db-backup
+# Бэкапы сохраняются в /srv/rommiks/backups/
+
+# Или вручную
+docker compose exec db pg_dump -U trading trading | gzip > /srv/rommiks/backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
 
 # Восстановить из бэкапа
-gunzip -c backup_20260215.sql.gz | docker compose exec -T db psql -U trading trading
+make db-restore file=/srv/rommiks/backups/backup_20260215.sql.gz
 ```
 
 ### Миграции
@@ -380,11 +413,7 @@ docker compose logs redis
 # Проверить диск
 df -h
 
-# Очистить Docker
-docker system prune -af --volumes
-# ВНИМАНИЕ: --volumes удалит ВСЕ неиспользуемые volumes!
-
-# Лучше — только старые образы и кэш
+# Очистить Docker (старые образы и кэш сборки)
 docker system prune -f
 ```
 

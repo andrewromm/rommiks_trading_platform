@@ -31,6 +31,23 @@ services:
       timeout: 5s
       retries: 5
 
+  n8n:
+    image: n8nio/n8n
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-changeme}
+    volumes:
+      - /srv/rommiks/data/n8n:/home/node/.n8n
+
   app:
     build: .
     restart: unless-stopped
@@ -39,6 +56,7 @@ services:
     environment:
       POSTGRES_HOST: db
       REDIS_HOST: redis
+      N8N_HOST: n8n
     depends_on:
       db:
         condition: service_healthy

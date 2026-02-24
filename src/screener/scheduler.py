@@ -15,6 +15,7 @@ INTERVAL_1H = 60 * 60        # 1 hour
 INTERVAL_4H = 4 * 60 * 60    # 4 hours
 INTERVAL_DAILY = 24 * 60 * 60  # 24 hours
 INTERVAL_LISTINGS = 15 * 60  # 15 minutes
+INTERVAL_CLEANUP = 24 * 60 * 60  # 24 hours
 
 
 async def _run_analysis(top: int, timeframe: str) -> None:
@@ -63,6 +64,15 @@ async def _run_listing_check() -> None:
         await notify_new_listing(pair["symbol"], pair["base"], pair["quote"])
 
 
+async def _run_cleanup() -> None:
+    """Delete old short-term OHLCV candles (1m, 5m older than 30 days)."""
+    from src.collector.storage import cleanup_old_candles
+    from src.core.database import async_session
+
+    async with async_session() as session:
+        await cleanup_old_candles(session)
+
+
 async def _get_symbols() -> list[str]:
     """Get active symbols for analysis."""
     from src.collector.symbols import get_active_symbols
@@ -93,6 +103,7 @@ async def run_scheduler(
     enable_4h: bool = True,
     enable_screener: bool = True,
     enable_listings: bool = True,
+    enable_cleanup: bool = True,
 ) -> None:
     """Start all scheduled tasks as concurrent asyncio tasks.
 
@@ -128,6 +139,10 @@ async def run_scheduler(
     if enable_listings:
         tasks.append(asyncio.create_task(
             _loop("listings", INTERVAL_LISTINGS, _run_listing_check)
+        ))
+    if enable_cleanup:
+        tasks.append(asyncio.create_task(
+            _loop("cleanup", INTERVAL_CLEANUP, _run_cleanup)
         ))
 
     log.info("scheduler_running", tasks=len(tasks))

@@ -1,8 +1,8 @@
 """OHLCV storage layer — batch upsert and queries."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,3 +89,26 @@ async def get_candle_count(
         query = query.where(OHLCV.timeframe == timeframe)
     result = await session.execute(query)
     return result.scalar_one()
+
+
+async def cleanup_old_candles(
+    session: AsyncSession,
+    days: int = 30,
+    timeframes: tuple[str, ...] = ("1m", "5m"),
+) -> int:
+    """Delete short-term candles older than `days` days.
+
+    Only removes high-frequency timeframes (1m, 5m by default).
+    Higher timeframes (1h, 4h, 1d) are kept indefinitely.
+    Returns number of deleted rows.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    stmt = delete(OHLCV).where(
+        OHLCV.timeframe.in_(list(timeframes)),
+        OHLCV.timestamp < cutoff,
+    )
+    result = await session.execute(stmt)
+    await session.commit()
+    deleted = result.rowcount
+    log.info("ohlcv_cleanup", deleted=deleted, cutoff=cutoff.isoformat(), timeframes=timeframes)
+    return deleted

@@ -1,0 +1,67 @@
+{
+  "name": "Signal Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "signal",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"body\"][\"confidence\"]}}",
+              "operation": "largerEqual",
+              "value2": 0.65
+            }
+          ]
+        }
+      },
+      "name": "Filter by Confidence",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=🚦 *{{$json[\"body\"][\"direction\"] === \"long\" ? \"🟢 LONG\" : \"🔴 SHORT\"}}* {{$json[\"body\"][\"symbol\"]}}\n\n📊 Confidence: {{($json[\"body\"][\"confidence\"] * 100).toFixed(0)}}%\n⏱ Timeframe: {{$json[\"body\"][\"timeframe\"]}}\n\n💰 Entry: {{$json[\"body\"][\"entry_price\"]}}\n🛑 SL: {{$json[\"body\"][\"stop_loss\"]}}\n🎯 TP1: {{$json[\"body\"][\"take_profit_1\"]}}\n🎯 TP2: {{$json[\"body\"][\"take_profit_2\"]}}\n📐 R:R {{$json[\"body\"][\"risk_reward\"]}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [680, 220],
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Filter by Confidence", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter by Confidence": {
+      "main": [
+        [{ "node": "Send Telegram", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "tags": ["trading", "signals"]
+}

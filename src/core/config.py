@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # OpenClaw
     openclaw_webhook_secret: str = ""
 
+    # n8n Webhooks (optional — leave empty to disable)
+    n8n_webhook_signal: str = ""
+    n8n_webhook_screener: str = ""
+    n8n_webhook_listing: str = ""
+
     # General
     log_level: str = "INFO"
     environment: str = "development"

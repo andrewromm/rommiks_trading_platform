@@ -74,18 +74,29 @@ async def _stream(top: int) -> None:
     import signal
 
     from src.collector.exchange import ExchangeClient
+    from src.collector.storage import save_candles
     from src.collector.symbols import (
         fetch_usdt_spot_pairs,
         get_top_symbols_by_volume,
+        sync_symbols_to_db,
     )
     from src.collector.websocket import WebSocketManager
     from src.core.config import settings
+    from src.core.database import async_session
     from src.core.redis import close_redis, get_redis
 
-    # Get top symbols
+    async def on_kline(symbol: str, timeframe: str, candle: list) -> None:
+        """Save a confirmed kline to TimescaleDB."""
+        async with async_session() as session:
+            await save_candles(session, symbol, timeframe, [candle])
+
+    # Discover top symbols and sync to DB (ensures symbols table is populated)
     async with ExchangeClient() as client:
         pairs = await fetch_usdt_spot_pairs(client)
         top_pairs = await get_top_symbols_by_volume(client, pairs, top_n=top)
+
+    async with async_session() as session:
+        await sync_symbols_to_db(session, top_pairs)
 
     symbols = [p["symbol"].replace("/", "") for p in top_pairs]
     log.info("stream_starting", symbols=len(symbols))
@@ -97,6 +108,8 @@ async def _stream(top: int) -> None:
         symbols=symbols,
         redis_client=redis_client,
         testnet=settings.bybit_testnet,
+        kline_timeframes=["1"],  # subscribe to 1m real-time candles
+        on_kline=on_kline,
     )
 
     loop = asyncio.get_running_loop()

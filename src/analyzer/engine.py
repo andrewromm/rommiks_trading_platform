@@ -34,6 +34,19 @@ SIGNAL_EXPIRY: dict[str, int] = {
 # Timeframes to analyze for signals (entry timeframes)
 ENTRY_TIMEFRAMES = ["15m", "1h", "4h"]
 
+# Adjacent timeframes to check for MTF confluence per entry timeframe
+CONFLUENCE_TIMEFRAMES: dict[str, list[str]] = {
+    "15m": ["1h", "4h"],
+    "1h": ["4h"],
+    "4h": ["1d"],
+}
+
+# Minimum candles for confluence timeframe analysis
+MIN_CANDLES_CONFLUENCE = 100
+
+# Confidence boost per agreeing timeframe
+CONFLUENCE_BOOST_PER_TF = 0.08
+
 
 async def load_ohlcv(
     session: AsyncSession,
@@ -115,6 +128,26 @@ async def save_signal(session: AsyncSession, candidate: SignalCandidate) -> Sign
     return signal
 
 
+def _quick_signal_direction(df: pd.DataFrame, htf_trend: int = 0) -> str | None:
+    """Compute indicators and return signal direction without DB interaction.
+
+    Returns "long", "short", or None if no signal above MIN_CONFIDENCE.
+    Used for MTF confluence scoring only — does not save anything.
+    """
+    if len(df) < 50:
+        return None
+
+    try:
+        enriched = compute_indicators(df)
+        levels = find_support_resistance(enriched)
+        candidates = generate_signals(enriched, "", "", higher_tf_trend=htf_trend, levels=levels)
+        if candidates:
+            return candidates[0].direction
+    except Exception:
+        pass
+    return None
+
+
 async def analyze_symbol(
     symbol: str,
     timeframe: str,
@@ -138,6 +171,13 @@ async def analyze_symbol(
         if htf:
             htf_df = await load_ohlcv(session, symbol, htf, limit=MIN_CANDLES_HTF)
 
+        # Load confluence timeframes
+        confluence_dfs: dict[str, pd.DataFrame] = {}
+        for ctf in CONFLUENCE_TIMEFRAMES.get(timeframe, []):
+            ctf_df = await load_ohlcv(session, symbol, ctf, limit=MIN_CANDLES_CONFLUENCE)
+            if len(ctf_df) >= 50:
+                confluence_dfs[ctf] = ctf_df
+
     if len(df) < MIN_CANDLES:
         log.debug(
             "insufficient_data",
@@ -159,6 +199,26 @@ async def analyze_symbol(
     candidates = generate_signals(
         df, symbol, timeframe, higher_tf_trend=htf_trend, levels=levels
     )
+
+    # Apply MTF confluence boost
+    if candidates and confluence_dfs:
+        candidate = candidates[0]
+        agreements = sum(
+            1
+            for ctf_df in confluence_dfs.values()
+            if _quick_signal_direction(ctf_df, htf_trend) == candidate.direction
+        )
+        if agreements > 0:
+            boost = round(min(agreements * CONFLUENCE_BOOST_PER_TF, 0.20), 2)
+            candidate.confidence = round(min(candidate.confidence + boost, 0.90), 2)
+            candidate.reasons.append(f"mtf_confluence ({agreements}/{len(confluence_dfs)})")
+            log.debug(
+                "mtf_confluence_boost",
+                symbol=symbol,
+                timeframe=timeframe,
+                agreements=agreements,
+                boost=boost,
+            )
 
     # Write phase: single session for saving signals
     if candidates:

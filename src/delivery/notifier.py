@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+
+import httpx
 from telegram import Bot
 from telegram.error import TelegramError
 from telegram.request import HTTPXRequest
@@ -18,6 +21,9 @@ log = get_logger("delivery.notifier")
 
 # Cached Bot instance (singleton)
 _bot: Bot | None = None
+
+# Strong references to background tasks to prevent premature GC
+_background_tasks: set[asyncio.Task] = set()
 
 # Telegram API timeouts in seconds
 _CONNECT_TIMEOUT = 10.0
@@ -74,6 +80,28 @@ async def send_message(text: str) -> bool:
         return False
 
 
+def _fire_n8n(url: str, payload: dict) -> None:
+    """Schedule a fire-and-forget n8n POST, keeping a strong reference to the task."""
+    task = asyncio.create_task(_post_n8n(url, payload))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+async def _post_n8n(url: str, payload: dict) -> None:
+    """Fire-and-forget POST to an n8n webhook.
+
+    Silently swallows all errors — n8n is not in the critical delivery path.
+    Timeout is 2 seconds to avoid blocking the main flow.
+    """
+    if not url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            await client.post(url, json=payload)
+    except Exception:
+        log.debug("n8n_webhook_failed", url=url)
+
+
 async def notify_signal(signal_dict: dict) -> bool:
     """Format and send a trading signal notification.
 
@@ -96,18 +124,27 @@ async def notify_signal(signal_dict: dict) -> bool:
         direction=signal_dict.get("direction"),
         confidence=confidence,
     )
-    return await send_message(text)
+    result = await send_message(text)
+    # n8n is an independent channel — fires regardless of Telegram result
+    _fire_n8n(settings.n8n_webhook_signal, signal_dict)
+    return result
 
 
 async def notify_screener(ranked: list[dict], title: str = "Daily Screener") -> bool:
     """Format and send screener top-N."""
     text = format_screener_top(ranked, title)
     log.info("sending_screener_notification", count=len(ranked))
-    return await send_message(text)
+    result = await send_message(text)
+    # n8n is an independent channel — fires regardless of Telegram result
+    _fire_n8n(settings.n8n_webhook_screener, {"title": title, "results": ranked})
+    return result
 
 
 async def notify_new_listing(symbol: str, base: str, quote: str) -> bool:
     """Send new listing alert."""
     text = format_new_listing(symbol, base, quote)
     log.info("sending_listing_notification", symbol=symbol)
-    return await send_message(text)
+    result = await send_message(text)
+    # n8n is an independent channel — fires regardless of Telegram result
+    _fire_n8n(settings.n8n_webhook_listing, {"symbol": symbol, "base": base, "quote": quote})
+    return result

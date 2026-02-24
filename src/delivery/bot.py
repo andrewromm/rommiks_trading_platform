@@ -31,7 +31,7 @@ _start_time: datetime | None = None
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command."""
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "Trading Bot active.\n\n"
         "Commands:\n"
         "/status — system status\n"
@@ -77,7 +77,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "last_signal_time": last_str,
         "uptime": uptime,
     })
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
 
 
 async def cmd_top(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -102,7 +102,7 @@ async def cmd_top(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         signals = result.scalars().all()
 
     if not signals:
-        await update.message.reply_text("No signals in the last 24 hours.")
+        await update.effective_message.reply_text("No signals in the last 24 hours.")
         return
 
     lines = [f"\U0001f3af Top {len(signals)} signals (24h)", ""]
@@ -113,13 +113,13 @@ async def cmd_top(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"({s.timeframe}) conf={s.confidence:.0%} R:R={s.risk_reward}"
         )
 
-    await update.message.reply_text("\n".join(lines))
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def cmd_signal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /signal SYMBOL — show latest signal for a symbol."""
     if not context.args:
-        await update.message.reply_text("Usage: /signal BTCUSDT")
+        await update.effective_message.reply_text("Usage: /signal BTCUSDT")
         return
 
     symbol = context.args[0].upper()
@@ -134,7 +134,7 @@ async def cmd_signal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         signal = result.scalar_one_or_none()
 
     if not signal:
-        await update.message.reply_text(f"No signals found for {symbol}")
+        await update.effective_message.reply_text(f"No signals found for {symbol}")
         return
 
     text = format_signal(signal.to_dict())
@@ -142,13 +142,13 @@ async def cmd_signal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     hours = int(age.total_seconds() // 3600)
     text += f"\n\nGenerated {hours}h ago | Status: {signal.status.value}"
 
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
 
 
 async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /trade SYMBOL long|short SIZE — open paper trade."""
     if not context.args or len(context.args) < 3:
-        await update.message.reply_text("Usage: /trade BTCUSDT long 100")
+        await update.effective_message.reply_text("Usage: /trade BTCUSDT long 100")
         return
 
     symbol = context.args[0].upper()
@@ -156,7 +156,7 @@ async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     size_str = context.args[2]
 
     if direction_str not in ("long", "short"):
-        await update.message.reply_text("Direction must be 'long' or 'short'")
+        await update.effective_message.reply_text("Direction must be 'long' or 'short'")
         return
 
     try:
@@ -164,7 +164,7 @@ async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if size <= 0:
             raise InvalidOperation
     except InvalidOperation:
-        await update.message.reply_text("Size must be a positive number (USDT)")
+        await update.effective_message.reply_text("Size must be a positive number (USDT)")
         return
 
     # Get current price and create trade in single session
@@ -177,7 +177,7 @@ async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         if result is None:
-            await update.message.reply_text(
+            await update.effective_message.reply_text(
                 f"No price data for {symbol}. Run backfill first."
             )
             return
@@ -201,29 +201,29 @@ async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "size_usdt": size,
     })
     text += f"\nTrade ID: #{trade.id}"
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
 
 
 async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /close ID PRICE — close paper trade."""
     if not context.args or len(context.args) < 2:
-        await update.message.reply_text("Usage: /close 1 70000")
+        await update.effective_message.reply_text("Usage: /close 1 70000")
         return
 
     try:
         trade_id = int(context.args[0])
         exit_price = Decimal(context.args[1])
     except (ValueError, InvalidOperation):
-        await update.message.reply_text("Usage: /close <trade_id> <exit_price>")
+        await update.effective_message.reply_text("Usage: /close <trade_id> <exit_price>")
         return
 
     async with async_session() as session:
         trade = await session.get(PaperTrade, trade_id)
         if not trade:
-            await update.message.reply_text(f"Trade #{trade_id} not found")
+            await update.effective_message.reply_text(f"Trade #{trade_id} not found")
             return
         if trade.closed_at is not None:
-            await update.message.reply_text(f"Trade #{trade_id} is already closed")
+            await update.effective_message.reply_text(f"Trade #{trade_id} is already closed")
             return
 
         trade.exit_price = exit_price
@@ -252,7 +252,7 @@ async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "pnl": trade.pnl,
         "pnl_pct": trade.pnl_pct,
     })
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
 
 
 async def cmd_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -267,7 +267,7 @@ async def cmd_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         if not trades:
             text = format_portfolio([])
-            await update.message.reply_text(text)
+            await update.effective_message.reply_text(text)
             return
 
         # Load latest prices for all traded symbols in one query
@@ -312,7 +312,7 @@ async def cmd_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         })
 
     text = format_portfolio(trade_dicts)
-    await update.message.reply_text(text)
+    await update.effective_message.reply_text(text)
 
 
 async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -322,17 +322,17 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             val = float(context.args[0])
             if 0 <= val <= 1:
                 set_min_confidence(val)
-                await update.message.reply_text(
+                await update.effective_message.reply_text(
                     f"Min confidence set to {get_min_confidence():.0%}"
                 )
                 return
             else:
-                await update.message.reply_text("Value must be between 0 and 1")
+                await update.effective_message.reply_text("Value must be between 0 and 1")
                 return
         except ValueError:
             pass
 
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         f"Current min confidence: {get_min_confidence():.0%}\n"
         "Usage: /settings 0.7"
     )
@@ -372,19 +372,36 @@ def create_app() -> Application:
 
 async def run_bot() -> None:
     """Start the bot in polling mode."""
+    import asyncio
+
+    from telegram import BotCommand
+
     global _start_time  # noqa: PLW0603
     _start_time = datetime.now(UTC)
 
     log.info("telegram_bot_starting")
     app = create_app()
     await app.initialize()
+
+    # Register commands in Telegram menu
+    await app.bot.set_my_commands([
+        BotCommand("status",    "System status & uptime"),
+        BotCommand("top",       "Top N coins by signal confidence"),
+        BotCommand("signal",    "Latest signal for a coin — /signal BTCUSDT"),
+        BotCommand("trade",     "Open paper trade — /trade BTCUSDT long 100"),
+        BotCommand("close",     "Close paper trade — /close ID PRICE"),
+        BotCommand("portfolio", "Open paper trades with unrealized P&L"),
+        BotCommand("settings",  "Set min confidence filter — /settings 0.7"),
+        BotCommand("help",      "Show available commands"),
+    ])
+    log.info("telegram_commands_registered")
+
     await app.start()
     await app.updater.start_polling(drop_pending_updates=True)
     log.info("telegram_bot_running")
 
     # Keep running until stopped
     try:
-        import asyncio
         stop_event = asyncio.Event()
         await stop_event.wait()
     except (KeyboardInterrupt, SystemExit):

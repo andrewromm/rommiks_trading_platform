@@ -121,6 +121,17 @@ def evaluate_long(
         confidence -= 0.15
         reasons.append("htf_trend_conflict")
 
+    # Candlestick pattern confirmation
+    if row.get("cdl_hammer", False):
+        confidence += 0.05
+        reasons.append("cdl_hammer")
+    if row.get("cdl_bullish_engulfing", False):
+        confidence += 0.05
+        reasons.append("cdl_bullish_engulfing")
+    if row.get("cdl_doji", False):
+        confidence -= 0.03
+        reasons.append("cdl_doji_uncertainty")
+
     return round(max(min(confidence, 0.90), 0.0), 2), reasons
 
 
@@ -194,6 +205,17 @@ def evaluate_short(
     elif higher_tf_trend == 1:
         confidence -= 0.15
         reasons.append("htf_trend_conflict")
+
+    # Candlestick pattern confirmation
+    if row.get("cdl_shooting_star", False):
+        confidence += 0.05
+        reasons.append("cdl_shooting_star")
+    if row.get("cdl_bearish_engulfing", False):
+        confidence += 0.05
+        reasons.append("cdl_bearish_engulfing")
+    if row.get("cdl_doji", False):
+        confidence -= 0.03
+        reasons.append("cdl_doji_uncertainty")
 
     return round(max(min(confidence, 0.90), 0.0), 2), reasons
 
@@ -276,6 +298,7 @@ def generate_signals(
     Evaluates only the last (most recent) candle.
     Returns a list of 0 or 1 SignalCandidate.
     """
+    from src.analyzer.indicators import detect_divergences
     from src.analyzer.levels import nearest_resistance, nearest_support
 
     if len(df) < 2:
@@ -293,8 +316,21 @@ def generate_signals(
     support_levels = levels.get("support", []) if levels else []
     resistance_levels = levels.get("resistance", []) if levels else []
 
+    divergences = detect_divergences(df)
+
     # Evaluate long
     long_conf, long_reasons = evaluate_long(row, prev_row, higher_tf_trend)
+    if long_conf > 0:
+        if divergences.get("bullish_rsi"):
+            long_conf = min(long_conf + 0.10, 0.90)
+            long_reasons.append("divergence_bullish_rsi")
+        if divergences.get("bullish_macd"):
+            long_conf = min(long_conf + 0.05, 0.90)
+            long_reasons.append("divergence_bullish_macd")
+        if divergences.get("bearish_rsi"):
+            long_conf = max(long_conf - 0.10, 0.0)
+            long_reasons.append("divergence_bearish_rsi_conflict")
+
     if long_conf >= MIN_CONFIDENCE:
         sr = nearest_support(support_levels, entry)
         sl, tp1, tp2, tp3, rr = compute_sl_tp("long", entry, float(atr), nearest_sr=sr)
@@ -322,6 +358,17 @@ def generate_signals(
 
     # Evaluate short
     short_conf, short_reasons = evaluate_short(row, prev_row, higher_tf_trend)
+    if short_conf > 0:
+        if divergences.get("bearish_rsi"):
+            short_conf = min(short_conf + 0.10, 0.90)
+            short_reasons.append("divergence_bearish_rsi")
+        if divergences.get("bearish_macd"):
+            short_conf = min(short_conf + 0.05, 0.90)
+            short_reasons.append("divergence_bearish_macd")
+        if divergences.get("bullish_rsi"):
+            short_conf = max(short_conf - 0.10, 0.0)
+            short_reasons.append("divergence_bullish_rsi_conflict")
+
     if short_conf >= MIN_CONFIDENCE:
         sr = nearest_resistance(resistance_levels, entry)
         sl, tp1, tp2, tp3, rr = compute_sl_tp("short", entry, float(atr), nearest_sr=sr)
